@@ -1,5 +1,5 @@
-from lxml import etree
 from datetime import datetime
+from lxml import etree
 
 print("Start Time =", datetime.now().strftime("%H:%M:%S"))
 
@@ -20,12 +20,16 @@ def create_data(elem):
 
 
 for event, tree in all_tree:
-    if event == 'start' and start_tag is None:
-        start_tag = tree.tag
-        create_data(tree)
-    if event == 'end' and tree.tag == start_tag:
-        start_tag = None
-        parent.clear()
+    if tree.tag in ['article', 'proceedings', 'inproceedings']:
+        if event == 'start' and start_tag is None:
+            start_tag = tree.tag
+            create_data(tree)
+        if event == 'end' and tree.tag == start_tag:
+            start_tag = None
+            parent.clear()
 
-print(dblp.keys())
+print('Length of article tags:', len(dblp['article']))
+print('Length of inproceedings tags:', len(dblp['inproceedings']))
+print('Length of proceedings tags:', len(dblp['proceedings']))
+
 print("Finish Time =", datetime.now().strftime("%H:%M:%S"))
