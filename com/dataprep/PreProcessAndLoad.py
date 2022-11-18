@@ -1,8 +1,4 @@
-from datetime import datetime
 from lxml import etree
-import pandas as pd
-
-print("Start Time =", datetime.now().strftime("%H:%M:%S"))
 
 all_tree = etree.iterparse("../../resources/dblp.xml", events=('start', 'end'), dtd_validation=True, recover=True)
 _, parent = next(all_tree)
