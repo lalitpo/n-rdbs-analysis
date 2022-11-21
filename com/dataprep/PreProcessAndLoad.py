@@ -1,7 +1,7 @@
 from lxml import etree
 from jproperties import Properties
 import pandas as pd
-import presto
+import prestodb
 
 start = 'start'
 end = 'end'
@@ -55,12 +55,12 @@ article_df = (pd.DataFrame.from_dict(dblp[article]).dropna()).drop_duplicates()
 inproc_df = (pd.DataFrame.from_dict(dblp[inproceedings])).drop_duplicates()
 proc_df = (pd.DataFrame.from_dict(dblp[proceedings])).drop_duplicates()
 
-presto_db_conn = presto.dbapi.connect(host=configs.get("PRESTO_DB_HOST").data,
-                                      port=8080,
-                                      http_scheme='https',
-                                      catalog='dblp-catalog',
-                                      schema=configs.get("PRESTO_DB_SCHEMA").data,
-                                      auth=presto.auth.BasicAuthentication(configs.get("PRESTO_DB_User").data,
-                                                                           configs.get("PRESTO_DB_PWD").data),
-                                      verify=False)
+presto_db_conn = prestodb.dbapi.connect(host=configs.get("PRESTO_DB_HOST").data,
+                                        port=8080,
+                                        http_scheme='https',
+                                        catalog='dblp-catalog',
+                                        schema=configs.get("PRESTO_DB_SCHEMA").data,
+                                        auth=prestodb.auth.BasicAuthentication(configs.get("PRESTO_DB_User").data,
+                                                                               configs.get("PRESTO_DB_PWD").data),
+                                        verify=False)
 cur = presto_db_conn.cursor()
