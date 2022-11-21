@@ -1,6 +1,7 @@
 from lxml import etree
 from jproperties import Properties
 import pandas as pd
+import presto
 
 start = 'start'
 end = 'end'
@@ -11,9 +12,6 @@ start_tag = None
 article = 'article'
 proceedings = 'proceedings'
 inproceedings = 'inproceedings'
-article_attribute = []
-inproc_attribute = []
-proc_attribute = []
 article_list = []
 inproc_list = []
 proc_list = []
@@ -22,15 +20,9 @@ configs = Properties()
 with open('../../resources/nrdbs.properties', 'rb') as read_prop:
     configs.load(read_prop)
 
-prop_view = configs.items()
-
-for prop in prop_view:
-    if 'journal' in prop[0]:
-        article_attribute = prop[1].data
-    if 'conf_proc' in prop[0]:
-        proc_attribute = prop[1].data
-    if 'conf_article' in prop[0]:
-        inproc_attribute = prop[1].data
+article_attribute = configs.get("journal_article_tags").data
+proc_attribute = configs.get("conf_proc_tags").data
+inproc_attribute = configs.get("conf_article_tags").data
 
 
 def create_data(elem):
@@ -60,7 +52,15 @@ for event, tree in all_tree:
 dblp = {article: article_list, proceedings: proc_list, inproceedings: inproc_list}
 
 article_df = (pd.DataFrame.from_dict(dblp[article]).dropna()).drop_duplicates()
-
 inproc_df = (pd.DataFrame.from_dict(dblp[inproceedings])).drop_duplicates()
-
 proc_df = (pd.DataFrame.from_dict(dblp[proceedings])).drop_duplicates()
+
+presto_db_conn = presto.dbapi.connect(host=configs.get("PRESTO_DB_HOST").data,
+                                      port=8080,
+                                      http_scheme='https',
+                                      catalog='dblp-catalog',
+                                      schema=configs.get("PRESTO_DB_SCHEMA").data,
+                                      auth=presto.auth.BasicAuthentication(configs.get("PRESTO_DB_User").data,
+                                                                           configs.get("PRESTO_DB_PWD").data),
+                                      verify=False)
+cur = presto_db_conn.cursor()
