@@ -1,5 +1,6 @@
 from lxml import etree
 from jproperties import Properties
+import pandas as pd
 
 start = 'start'
 end = 'end'
@@ -58,28 +59,8 @@ for event, tree in all_tree:
 
 dblp = {article: article_list, proceedings: proc_list, inproceedings: inproc_list}
 
-"""
-article_attribute = set()
-inproc_attribute = set()
-proc_attribute = set()
-for entries in article_list:
-    for key, value in entries.items():
-        if key not in article_attribute:
-            article_attribute.add(key)
+article_df = (pd.DataFrame.from_dict(dblp[article]).dropna()).drop_duplicates()
 
-print("article_attribute :", article_attribute)
+inproc_df = (pd.DataFrame.from_dict(dblp[inproceedings])).drop_duplicates()
 
-for entries in inproc_list:
-    for key, value in entries.items():
-        if key not in inproc_attribute:
-            inproc_attribute.add(key)
-
-print("inproc_attribute :", inproc_attribute)
-
-for entries in proc_list:
-    for key, value in entries.items():
-        if key not in proc_attribute:
-            proc_attribute.add(key)
-
-print("proc_attribute :", proc_attribute)
-"""
+proc_df = (pd.DataFrame.from_dict(dblp[proceedings])).drop_duplicates()
