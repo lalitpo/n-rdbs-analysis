@@ -18,7 +18,7 @@ def run_test(script_path):
     return end_time - start_time
 
 def main():
-    sql_scripts = glob.glob("../queries/*.sql")
+    sql_scripts = sorted(glob.glob("../queries/*.sql"))
     logger.info("running %d sql scripts", len(sql_scripts))
     query_timings = {}
 
