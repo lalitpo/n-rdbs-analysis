@@ -33,6 +33,12 @@ def main():
     for query_name, timings in query_timings.items():
         logger.info(f"{query_name}: {sum(timings) / len(timings)}")
 
+    plt.boxplot(query_timings.values())
+    plt.xticks(range(1, len(query_timings) + 1), query_timings.keys(), rotation=90)
+    plt.title("Query Latency")
+    plt.ylabel("Latency (s)")
+    plt.xlabel("Query")
+    plt.show()
 
 if __name__ == "__main__":
     main()
