@@ -1,7 +1,7 @@
 # n-rdbs-analysis 📈
 
 This project is developed to analyse and compare the efficiency of 
-Relational Database systems, like Redis and Non Relational Database
+Relational Database systems, like Redis and Non-Relational Database
 systems like Presto for query processing of large size data.
 
 
