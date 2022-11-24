@@ -1,7 +1,7 @@
 from lxml import etree
 from jproperties import Properties
-import pandas as pd
 import prestodb
+import pandas as pd
 
 start = 'start'
 end = 'end'
@@ -27,7 +27,7 @@ inproc_attribute = configs.get("conf_article_tags").data
 
 def add_elem(ent1, item):
     if ent1.tag in item.keys() and ent1.text is not None:
-        item[ent1.tag] = item.get(ent1.tag)+","+ent1.text
+        item[ent1.tag] = item.get(ent1.tag) + "," + ent1.text
     else:
         item[ent1.tag] = ent1.text
 
@@ -62,15 +62,43 @@ article_df = (pd.DataFrame.from_dict(dblp[article]).dropna()).drop_duplicates()
 inproc_df = (pd.DataFrame.from_dict(dblp[inproceedings])).drop_duplicates()
 proc_df = (pd.DataFrame.from_dict(dblp[proceedings])).drop_duplicates()
 
-article_json = article_df.to_json(r'article.json', orient='records')
-inproc_json = inproc_df.to_json(r'inproceedings.json', orient='records')
-proc_json = proc_df.to_json(r'proceedings.json', orient='records')
+DF_dict = {'journal_articles': article_df,
+           'conference_articles': inproc_df,
+           'conference_proceedings': proc_df}
 
-"""presto_db_conn = prestodb.dbapi.connect(host=configs.get("PRESTO_DB_HOST").data,
+presto_db_conn = prestodb.dbapi.connect(host=configs.get("PRESTO_DB_HOST"),
                                         port=8080,
-                                        catalog='dblp-catalog',
-                                        schema=configs.get("PRESTO_DB_SCHEMA").data,
-                                        auth=prestodb.auth.BasicAuthentication(configs.get("PRESTO_DB_User").data,
-                                                                               configs.get("PRESTO_DB_PWD").data),
-                                        verify=False)
-cur = presto_db_conn.cursor()"""
+                                        user=configs.get("PRESTO_DB_USER"),
+                                        catalog=configs.get("PRESTO_DB_CATALOG"),
+                                        schema=configs.get("PRESTO_DB_SCHEMA"))
+cur = presto_db_conn.cursor()
+
+exception_str = "Exception occurred because of query : "
+
+
+def create_table(df_name, df_records):
+    create_table_sql = ""
+    try:
+        create_table_sql = "CREATE TABLE " + df_name + " ( " + ', '.join(
+            [s + " varchar" for s in df_records.columns.tolist()]) + ")"
+        cur.execute(create_table_sql)
+        cur.fetchone()
+    except Exception:
+        print(exception_str, create_table_sql)
+
+
+def insert_dframe_records(df_name, df_records):
+    insert_sql = ""
+    try:
+        cols = ", ".join([str(i) for i in df_records.columns.tolist()])
+        for i, record in df_records.iterrows():
+            insert_sql = "INSERT INTO " + df_name + "(" + cols + ") VALUES " + str(tuple(record))
+            cur.execute(insert_sql)
+            cur.fetchone()
+    except Exception:
+        print(exception_str, insert_sql)
+
+
+for key in DF_dict:
+    create_table(key, DF_dict[key])
+    insert_dframe_records(key, DF_dict[key])
