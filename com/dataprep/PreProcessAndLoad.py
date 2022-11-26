@@ -66,11 +66,11 @@ DF_dict = {'journal_articles': article_df,
            'conference_articles': inproc_df,
            'conference_proceedings': proc_df}
 
-presto_db_conn = prestodb.dbapi.connect(host=configs.get("PRESTO_DB_HOST"),
+presto_db_conn = prestodb.dbapi.connect(host='localhost',
                                         port=8080,
-                                        user=configs.get("PRESTO_DB_USER"),
-                                        catalog=configs.get("PRESTO_DB_CATALOG"),
-                                        schema=configs.get("PRESTO_DB_SCHEMA"))
+                                        user='lalit',
+                                        catalog='postgres',
+                                        schema='public')
 cur = presto_db_conn.cursor()
 
 exception_str = "Exception occurred because of query : "
@@ -83,7 +83,7 @@ def create_table(df_name, df_records):
             [s + " varchar" for s in df_records.columns.tolist()]) + ")"
         cur.execute(create_table_sql)
         cur.fetchone()
-    except Exception:
+    except:
         print(exception_str, create_table_sql)
 
 
@@ -92,10 +92,11 @@ def insert_dframe_records(df_name, df_records):
     try:
         cols = ", ".join([str(i) for i in df_records.columns.tolist()])
         for i, record in df_records.iterrows():
-            insert_sql = "INSERT INTO " + df_name + "(" + cols + ") VALUES " + str(tuple(record))
+            insert_sql = "INSERT INTO " + df_name + "(" + cols + ") VALUES " + "( " + ', '.join(
+                ["'" + s.replace("'", "''") + "'" for s in tuple(record)]) + ")"
             cur.execute(insert_sql)
             cur.fetchone()
-    except Exception:
+    except:
         print(exception_str, insert_sql)
 
 
