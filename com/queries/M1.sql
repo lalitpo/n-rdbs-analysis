@@ -1,0 +1,2 @@
+-- Medium M1: How many articles were published in the SIGMOD conference
+-- proceedings this year?
