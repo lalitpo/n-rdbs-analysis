@@ -1,0 +1,1 @@
+-- Hard H2: Compute the Erdős number (Erdös in DBLP) of Dan Suciu (c.f., explanation below).
