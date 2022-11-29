@@ -1,0 +1,2 @@
+-- Medium M4: In which year did the SIGMOD conference have the most
+-- papers with over 10 authors?

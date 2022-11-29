@@ -1,0 +1,2 @@
+-- Medium M3: What was the median amount of articles published for each
+-- year of the CIDR conference.
