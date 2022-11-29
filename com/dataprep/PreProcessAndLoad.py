@@ -38,13 +38,16 @@ def create_data(elem):
     for ent1 in elem.getchildren():
         if elem.tag == article and ent1.tag in article_attribute:
             add_elem(ent1, item)
-            article_list.append(item)
         if elem.tag == proceedings and ent1.tag in proc_attribute:
             add_elem(ent1, item)
-            proc_list.append(item)
         if elem.tag == inproceedings and ent1.tag in inproc_attribute:
             add_elem(ent1, item)
-            inproc_list.append(item)
+    if elem.tag == article:
+        article_list.append(item)
+    if elem.tag == proceedings:
+        proc_list.append(item)
+    if elem.tag == inproceedings:
+        inproc_list.append(item)
 
 
 for event, tree in all_tree:
@@ -59,8 +62,8 @@ for event, tree in all_tree:
 dblp = {article: article_list, proceedings: proc_list, inproceedings: inproc_list}
 
 article_df = (pd.DataFrame.from_dict(dblp[article]).dropna()).drop_duplicates()
-inproc_df = (pd.DataFrame.from_dict(dblp[inproceedings])).drop_duplicates()
-proc_df = (pd.DataFrame.from_dict(dblp[proceedings])).drop_duplicates()
+inproc_df = (pd.DataFrame.from_dict(dblp[inproceedings]).dropna()).drop_duplicates()
+proc_df = (pd.DataFrame.from_dict(dblp[proceedings]).dropna()).drop_duplicates()
 
 DF_dict = {'journal_articles': article_df,
            'conference_articles': inproc_df,
