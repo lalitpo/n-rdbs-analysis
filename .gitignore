@@ -1,3 +1,7 @@
 ve/
 *.ignore.sql
 *.gz
+.DS_Store
+.idea/
+com/.DS_Store
+
