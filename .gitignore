@@ -2,3 +2,6 @@ ve/
 *.ignore.sql
 *.gz
 resources/*.json
+.DS_Store
+.idea/
+com/.DS_Store
