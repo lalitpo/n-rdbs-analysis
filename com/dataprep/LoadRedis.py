@@ -25,9 +25,9 @@ def load_articles(r: redis.StrictRedis, json_file: str):
     start = time.process_time()
     r.execute_command("MULTI")
     for i, article in enumerate(data):
-        update_progress("Loading articles", (i/length)*100)
+        update_progress("Loading journal articles", (i/length)*100)
         r.execute_command(
-            "HSET", f"article:{i}",
+            "HSET", f"journal_articles:{i}",
             "key", article["key"],
             "title", article["title"],
             "year", article["year"],
@@ -50,9 +50,9 @@ def load_inproceedings(r: redis.StrictRedis, json_file: str):
     start = time.process_time()
     r.execute_command("MULTI")
     for i, inproceedings in enumerate(data):
-        update_progress("Loading inproceedings", (i/length)*100)
+        update_progress("Loading conference articles", (i/length)*100)
         r.execute_command(
-            "HSET", f"inproceedings:{i}",
+            "HSET", f"conference_articles:{i}",
             "key", inproceedings["key"] if inproceedings["key"] is not None else "",
             "author", inproceedings["author"] if inproceedings["author"] is not None else "",
             "title", inproceedings["title"] if inproceedings["title"] is not None else "",
@@ -103,8 +103,8 @@ if __name__ == '__main__':
     try:
         print("Dropping indexes...")
         start = time.process_time()
-        r.execute_command("FT.DROPINDEX articles DD")
-        r.execute_command("FT.DROPINDEX inproceedings DD")
+        r.execute_command("FT.DROPINDEX journal_articles DD")
+        r.execute_command("FT.DROPINDEX conference_articles DD")
         r.execute_command("FT.DROPINDEX proceedings DD")
         end = time.process_time()
         print(f"Indexes dropped in {round(end-start, 2)}s")
@@ -112,8 +112,8 @@ if __name__ == '__main__':
         print("Indexes not found")
 
     # Create the index
-    article = "FT.CREATE articles ON HASH PREFIX 1 article: SCHEMA key TEXT title TEXT WEIGHT 5.0 year NUMERIC journal TEXT number NUMERIC volume NUMERIC"
-    inproceedings = "FT.CREATE inproceedings ON HASH PREFIX 1 inproceedings: SCHEMA key TEXT author TEXT title TEXT WEIGHT 5.0 year NUMERIC pages TEXT"
+    article = "FT.CREATE journal_articles ON HASH PREFIX 1 article: SCHEMA key TEXT title TEXT WEIGHT 5.0 year NUMERIC journal TEXT number NUMERIC volume NUMERIC"
+    inproceedings = "FT.CREATE conference_articles ON HASH PREFIX 1 inproceedings: SCHEMA key TEXT author TEXT title TEXT WEIGHT 5.0 year NUMERIC pages TEXT"
     proceedings = "FT.CREATE proceedings ON HASH PREFIX 1 proceedings: SCHEMA key TEXT editor TEXT title TEXT WEIGHT 5.0 publisher TEXT year NUMERIC volume NUMERIC"
 
     r.execute_command(article)
