@@ -251,7 +251,7 @@ JOIN (
 ON c1.author < c2.author AND c1.co_author = c2.co_author
 GROUP BY c1.author, c2.author
 ORDER BY num_collaborations DESC;
-``` 
+```
 
 This query uses a common table expression (CTE) to find the researchers who published to the ICDT 
 ```sql
