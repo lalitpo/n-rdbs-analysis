@@ -298,7 +298,7 @@ WITH RECURSIVE cte (author, distance) AS ( 
 SELECT distance 
 FROM cte 
 WHERE author = 'Dan Suciu'; 
-``` 
+```
 
 This query uses a recursive common table expression (CTE) to find the collaborative distance between Paul Erdős and Dan Suciu. 
 
