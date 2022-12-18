@@ -30,8 +30,7 @@ CREATE INDEX idx_booktitle ON conference_proceedings (booktitle); 
 
 ![e2_expected_result.png](./images/e2_expected_result.png)
 
-```sql
-Here the link that images comes from => https://dblp.org/search/publ/api?q=stream%3Astreams%2Fjournals%2Fmst%3A&h=1000&format=xml 
+[Here](https://dblp.org/search/publ/api?q=stream%3Astreams%2Fjournals%2Fmst%3A&h=1000&format=xml) the link that images comes from
 
 query that should normally be 
 ```sql
