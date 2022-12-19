@@ -2,8 +2,6 @@
 -- Who was their most frequently occurring co-author (conference & journal)?
 
 -- How many times did they collaborate?
-CREATE INDEX idx_year_journal ON journal_articles (year, journal); 
-CREATE INDEX idx_year_booktitle ON conference_articles (year, booktitle); 
 WITH cte AS (
   SELECT DISTINCT author
   FROM (

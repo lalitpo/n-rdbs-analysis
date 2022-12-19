@@ -2,6 +2,8 @@ from lxml import etree
 from jproperties import Properties
 import prestodb
 import pandas as pd
+from sqlalchemy.engine import create_engine
+import datetime
 
 start = 'start'
 end = 'end'
@@ -49,7 +51,7 @@ def create_data(elem):
     if elem.tag == inproceedings:
         inproc_list.append(item)
 
-
+print("process start",datetime.datetime.now())
 for event, tree in all_tree:
     if tree.tag in [article, inproceedings, proceedings]:
         if event == start and start_tag is None:
@@ -69,40 +71,11 @@ DF_dict = {'journal_articles': article_df,
            'conference_articles': inproc_df,
            'conference_proceedings': proc_df}
 
-presto_db_conn = prestodb.dbapi.connect(host='localhost',
-                                        port=8080,
-                                        user='lalit',
-                                        catalog='postgres',
-                                        schema='public')
-cur = presto_db_conn.cursor()
+print("inserting to db",datetime.datetime.now())
 
-exception_str = "Exception occurred because of query : "
-
-
-def create_table(df_name, df_records):
-    create_table_sql = ""
-    try:
-        create_table_sql = "CREATE TABLE " + df_name + " ( " + ', '.join(
-            [s + " varchar" for s in df_records.columns.tolist()]) + ")"
-        cur.execute(create_table_sql)
-        cur.fetchone()
-    except:
-        print(exception_str, create_table_sql)
-
-
-def insert_dframe_records(df_name, df_records):
-    insert_sql = ""
-    try:
-        cols = ", ".join([str(i) for i in df_records.columns.tolist()])
-        for i, record in df_records.iterrows():
-            insert_sql = "INSERT INTO " + df_name + "(" + cols + ") VALUES " + "( " + ', '.join(
-                ["'" + s.replace("'", "''") + "'" for s in tuple(record)]) + ")"
-            cur.execute(insert_sql)
-            cur.fetchone()
-    except:
-        print(exception_str, insert_sql)
-
-
+engine = create_engine('postgresql://admin:admin@localhost:5432/postgres')
 for key in DF_dict:
-    create_table(key, DF_dict[key])
-    insert_dframe_records(key, DF_dict[key])
+    DF_dict[key].to_sql(key, engine)
+
+
+print("inserting to db completed", datetime.datetime.now())

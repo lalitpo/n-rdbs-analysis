@@ -1,5 +1,6 @@
 -- Medium M6: For the researcher(s) with the most overall (conference & journal)
 -- publications: to how many different conferences did they publish?
+CREATE INDEX idx_booktitle_editor ON conference_proceedings (booktitle, editor); 
 WITH cte AS (
   SELECT author, COUNT(*) AS num_publications
   FROM (
