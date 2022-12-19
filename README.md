@@ -11,6 +11,10 @@ https://dblp.org/xml/dblp.xml.gz
 
 And place it in resource folder of the project before running it.
 
+# Important Information 📝
+All the scripts are written in Python3 and require the libraries mentioned in the requirements.txt file.
+It is designed to be run from the root of the project. (e.g. `python3 com/dataprep/LoadRedis.py` rather than `python3 LoadRedis.py`)
+
 # Setting up PrestoDB
 
 PREREQUISITE :

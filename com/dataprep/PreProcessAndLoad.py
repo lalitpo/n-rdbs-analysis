@@ -5,21 +5,21 @@ import pandas as pd
 from sqlalchemy.engine import create_engine
 import datetime
 
-start = 'start'
-end = 'end'
-all_tree = etree.iterparse("../../resources/dblp.xml", events=(start, end), dtd_validation=True, recover=True)
+start = "start"
+end = "end"
+all_tree = etree.iterparse("resources/dblp.xml", events=(start, end), dtd_validation=True, recover=True)
 _, parent = next(all_tree)
 start_tag = None
 
-article = 'article'
-proceedings = 'proceedings'
-inproceedings = 'inproceedings'
+article = "article"
+proceedings = "proceedings"
+inproceedings = "inproceedings"
 article_list = []
 inproc_list = []
 proc_list = []
 
 configs = Properties()
-with open('../../resources/nrdbs.properties', 'rb') as read_prop:
+with open("resources/nrdbs.properties", "rb") as read_prop:
     configs.load(read_prop)
 
 article_attribute = configs.get("journal_article_tags").data
@@ -36,7 +36,7 @@ def add_elem(ent1, item):
 
 def create_data(elem):
     item = dict()
-    item['key'] = elem.attrib.get('key')
+    item["key"] = elem.attrib.get("key")
     for ent1 in elem.getchildren():
         if elem.tag == article and ent1.tag in article_attribute:
             add_elem(ent1, item)
@@ -67,13 +67,13 @@ article_df = (pd.DataFrame.from_dict(dblp[article]).dropna()).drop_duplicates()
 inproc_df = (pd.DataFrame.from_dict(dblp[inproceedings]).dropna()).drop_duplicates()
 proc_df = (pd.DataFrame.from_dict(dblp[proceedings]).dropna()).drop_duplicates()
 
-DF_dict = {'journal_articles': article_df,
-           'conference_articles': inproc_df,
-           'conference_proceedings': proc_df}
+DF_dict = {"journal_articles": article_df,
+           "conference_articles": inproc_df,
+           "conference_proceedings": proc_df}
 
 print("inserting to db",datetime.datetime.now())
 
-engine = create_engine('postgresql://admin:admin@localhost:5432/postgres')
+engine = create_engine("postgresql://admin:admin@localhost:5432/postgres")
 for key in DF_dict:
     DF_dict[key].to_sql(key, engine)
 

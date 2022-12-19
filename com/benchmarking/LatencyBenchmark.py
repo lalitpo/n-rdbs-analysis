@@ -12,13 +12,13 @@ logger = logging.getLogger("Benchmarking")
 RUN_AMOUNT = 30
 
 def run_test(script_path):
-    start_time = time.time()
+    start_time = time.process_time()
     time.sleep(random.random() * 0.01)
-    end_time = time.time()
+    end_time = time.process_time()
     return end_time - start_time
 
 def main():
-    sql_scripts = sorted(glob.glob("../queries/*.sql"))
+    sql_scripts = sorted(glob.glob("com/queries/presto/*.sql"))
     logger.info("running %d sql scripts", len(sql_scripts))
     query_timings = {}
 
@@ -35,7 +35,7 @@ def main():
 
     plt.boxplot(query_timings.values())
     plt.xticks(range(1, len(query_timings) + 1), query_timings.keys(), rotation=90)
-    plt.title("Query Latency")
+    plt.title("Query Latency (Presto, avg. over 30 runs)")
     plt.ylabel("Latency (s)")
     plt.xlabel("Query")
     plt.show()
