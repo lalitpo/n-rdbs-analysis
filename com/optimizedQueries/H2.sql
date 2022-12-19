@@ -1,4 +1,6 @@
 -- Hard H2: Compute the Erdős number (Erdös in DBLP) of Dan Suciu (c.f., explanation below).
+CREATE INDEX idx_author ON conference_articles (author); 
+CREATE INDEX idx_author ON journal_articles (author); 
 WITH RECURSIVE cte (author, distance) AS (
     SELECT 'Paul Erdős', 0
     UNION ALL
