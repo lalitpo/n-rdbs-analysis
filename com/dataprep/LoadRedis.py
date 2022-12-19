@@ -15,7 +15,8 @@ def update_progress(subject, progress):
 
 def load_json(json_file: str):
     with open(json_file) as f:
-        data = json.load(f)
+        json_data = ",\n".join(f.readlines())
+        data = json.loads(f"[{json_data}]")
         return data
 
 
@@ -29,6 +30,7 @@ def load_articles(r: redis.StrictRedis, json_file: str):
         r.execute_command(
             "HSET", f"journal_articles:{i}",
             "key", article["key"],
+            "author", article["author"],
             "title", article["title"],
             "year", article["year"],
             "journal", article["journal"],
@@ -112,13 +114,13 @@ if __name__ == '__main__':
         print("Indexes not found")
 
     # Create the index
-    article = "FT.CREATE journal_articles ON HASH PREFIX 1 article: SCHEMA key TEXT title TEXT WEIGHT 5.0 year NUMERIC journal TEXT number NUMERIC volume NUMERIC"
+    article = "FT.CREATE journal_articles ON HASH PREFIX 1 article: SCHEMA key TEXT title TEXT author TEXT WEIGHT 5.0 year NUMERIC journal TEXT number NUMERIC volume NUMERIC"
     inproceedings = "FT.CREATE conference_articles ON HASH PREFIX 1 inproceedings: SCHEMA key TEXT author TEXT title TEXT WEIGHT 5.0 year NUMERIC pages TEXT"
     proceedings = "FT.CREATE proceedings ON HASH PREFIX 1 proceedings: SCHEMA key TEXT editor TEXT title TEXT WEIGHT 5.0 publisher TEXT year NUMERIC volume NUMERIC"
 
     r.execute_command(article)
-    load_articles(r, "resources/article.json")
+    load_articles(r, "resources/journal_articles.json")
     r.execute_command(inproceedings)
-    load_inproceedings(r, "resources/inproceedings.json")
+    load_inproceedings(r, "resources/conference_articles.json")
     r.execute_command(proceedings)
-    load_proceedings(r, "resources/proceedings.json")
+    load_proceedings(r, "resources/conference_proceedings.json")
