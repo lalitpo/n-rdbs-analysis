@@ -34,7 +34,7 @@ def load_articles(r: redis.StrictRedis, json_file: str):
     for i, article in enumerate(data):
         update_progress("Loading journal articles", (i/length)*100)
         r.execute_command(
-            "FT.ADD", f"journal_articles {i} 1.0 FIELDS",
+            f"HSET j_article:{i}",
             "key", article["key"],
             "author", article["author"],
             "title", article["title"],
@@ -63,7 +63,7 @@ def load_inproceedings(r: redis.StrictRedis, json_file: str):
     for i, inproceedings in enumerate(data):
         update_progress("Loading conference articles", (i/length)*100)
         r.execute_command(
-            "FT.ADD", f"conference_articles {i} 1.0 FIELDS",
+            f"HSET c_article:{i}",
             "key", inproceedings["key"] if inproceedings["key"] is not None else "",
             "author", inproceedings["author"] if inproceedings["author"] is not None else "",
             "title", inproceedings["title"] if inproceedings["title"] is not None else "",
@@ -86,10 +86,11 @@ def load_proceedings(r: redis.StrictRedis, json_file: str):
     for i, proceedings in enumerate(data):
         update_progress("Loading proceedings", (i/length)*100)
         r.execute_command(
-            "FT.ADD", f"proceedings {i} 1.0 FIELDS",
+            f"HSET proceedings:{i}",
             "key", proceedings["key"] if proceedings["key"] is not None else "",
             "editor", proceedings["editor"] if proceedings["editor"] is not None else "",
             "title", proceedings["title"] if proceedings["title"] is not None else "",
+            "booktitle", proceedings["booktitle"] if proceedings["booktitle"] is not None else "",
             "publisher", proceedings["publisher"] if proceedings["publisher"] is not None else "",
             "year", proceedings["year"] if proceedings["year"] is not None else "",
             "volume", proceedings["volume"] if proceedings["volume"] is not None else ""
@@ -108,29 +109,29 @@ if __name__ == '__main__':
     r = redis.StrictRedis(host='localhost', port=1234, db=0)
 
     # DROP INDEX
-    print("Dropping indexes...")
-    start = time.process_time()
+    print("Flushing & Dropping indexes...")
+    start = time.time()
     try:
+        r.execute_command("FLUSHALL")
+        print("Flushed all")
         r.execute_command("FT.DROPINDEX journal_articles")
         print("Dropped journal_articles")
         r.execute_command("FT.DROPINDEX conference_articles")
         print("Dropped conference_articles")
         r.execute_command("FT.DROPINDEX proceedings")
         print("Dropped proceedings")
-        r.execute_command("FLUSHALL")
-        print("Flushed all")
     except:
         print("No more indexes to drop")
     finally:
-        end = time.process_time()
+        end = time.time()
         print(f"Indexes dropped in {round(end-start, 2)}s")
 
     input("Press enter to continue...")
 
     # Create the index
-    article = "FT.CREATE journal_articles ON HASH PREFIX 1 article: SCHEMA key TEXT title TEXT author TEXT year NUMERIC journal TEXT number NUMERIC volume NUMERIC"
-    inproceedings = "FT.CREATE conference_articles ON HASH PREFIX 1 inproceedings: SCHEMA key TEXT author TEXT title TEXT year NUMERIC pages TEXT"
-    proceedings = "FT.CREATE proceedings ON HASH PREFIX 1 proceedings: SCHEMA key TEXT editor TEXT title TEXT publisher TEXT year NUMERIC volume NUMERIC"
+    article = "FT.CREATE journal_articles ON HASH PREFIX 1 j_article: SCHEMA key TEXT title TEXT author TEXT year NUMERIC journal TEXT number NUMERIC volume NUMERIC"
+    inproceedings = "FT.CREATE conference_articles ON HASH PREFIX 1 c_article: SCHEMA key TEXT author TEXT title TEXT year NUMERIC pages TEXT"
+    proceedings = "FT.CREATE proceedings ON HASH PREFIX 1 proceedings: SCHEMA key TEXT editor TEXT booktitle TEXT title TEXT publisher TEXT year NUMERIC volume NUMERIC"
 
     r.execute_command(article)
     load_articles(r, "resources/journal_articles.json")
