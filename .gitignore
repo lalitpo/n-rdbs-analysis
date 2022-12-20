@@ -6,3 +6,4 @@ resources/dblp.xml
 .DS_Store
 .idea/
 com/.DS_Store
+redis_data/
