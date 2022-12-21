@@ -2,6 +2,7 @@ ve/
 *.ignore.sql
 *.gz
 resources/*.json
+resources/dblp.xml
 .DS_Store
 .idea/
 com/.DS_Store

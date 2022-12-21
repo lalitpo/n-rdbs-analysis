@@ -15,31 +15,43 @@ def update_progress(subject, progress):
 
 def load_json(json_file: str):
     with open(json_file) as f:
-        data = json.load(f)
+        json_data = ",\n".join(f.readlines())
+        data = json.loads(f"[{json_data}]")
         return data
 
 
 def load_articles(r: redis.StrictRedis, json_file: str):
+    """
+    Load the journal articles into Redis. The articles are stored in a hash
+    and the journal and author are stored in a set, referencing the article
+
+    :param r: Redis connection
+    :param json_file: Path to the json file
+    """
     data = load_json(json_file)
     length = len(data)
     start = time.process_time()
-    r.execute_command("MULTI")
     for i, article in enumerate(data):
         update_progress("Loading journal articles", (i/length)*100)
         r.execute_command(
             "HSET", f"journal_articles:{i}",
             "key", article["key"],
+            "author", article["author"],
             "title", article["title"],
             "year", article["year"],
             "journal", article["journal"],
             "number", article["number"],
             "volume", article["volume"]
         )
-        # Execute the command every 1000 articles
-        if i % 1000 == 0:
-            r.execute_command("EXEC")
-            r.execute_command("MULTI")
-    r.execute_command("EXEC")
+        # Add the article to the journal
+        r.sadd(f"journal:{article['journal']}:articles", f"journal_articles:{i}")
+        # Add the article to the author
+        authors = article["author"].split(",")
+        for author in authors:
+            r.sadd(f"author:{author.strip()}:articles", f"journal_articles:{i}")
+        # Add the article to the year
+        r.sadd(f"year:{article['year']}:articles", f"journal_articles:{i}")
+
     end = time.process_time()
     print(f"\nTime: {round(end-start, 2)}s")
 
@@ -48,7 +60,6 @@ def load_inproceedings(r: redis.StrictRedis, json_file: str):
     data = load_json(json_file)
     length = len(data)
     start = time.process_time()
-    r.execute_command("MULTI")
     for i, inproceedings in enumerate(data):
         update_progress("Loading conference articles", (i/length)*100)
         r.execute_command(
@@ -59,12 +70,11 @@ def load_inproceedings(r: redis.StrictRedis, json_file: str):
             "year", inproceedings["year"] if inproceedings["year"] is not None else "",
             "pages", inproceedings["pages"] if inproceedings["pages"] is not None else ""
         )
-        # Execute the command every 1000 inproceedings
-        if i % 1000 == 0:
-            r.execute_command("EXEC")
-            r.execute_command("MULTI")
+        # Add the article to the author
+        authors = inproceedings["author"].split(",")
+        for author in authors:
+            r.sadd(f"author:{author.strip()}:inproceedings", f"conference_articles:{i}")
 
-    r.execute_command("EXEC")
     end = time.process_time()
     print(f"\nTime: {round(end-start, 2)}s")
 
@@ -73,7 +83,6 @@ def load_proceedings(r: redis.StrictRedis, json_file: str):
     data = load_json(json_file)
     length = len(data)
     start = time.process_time()
-    r.execute_command("MULTI")
     for i, proceedings in enumerate(data):
         update_progress("Loading proceedings", (i/length)*100)
         r.execute_command(
@@ -85,12 +94,11 @@ def load_proceedings(r: redis.StrictRedis, json_file: str):
             "year", proceedings["year"] if proceedings["year"] is not None else "",
             "volume", proceedings["volume"] if proceedings["volume"] is not None else ""
         )
-        # Execute the command every 1000 proceedings
-        if i % 1000 == 0:
-            r.execute_command("EXEC")
-            r.execute_command("MULTI")
-
-    r.execute_command("EXEC")
+        # Add the proceedings to the editor
+        r.sadd(f"editor:{proceedings['editor']}:proceedings", f"proceedings:{i}")
+        # Add the proceedings to the publisher
+        r.sadd(f"publisher:{proceedings['publisher']}:proceedings", f"proceedings:{i}")
+ 
     end = time.process_time()
     print(f"\nTime: {round(end-start, 2)}s")
 
@@ -100,25 +108,35 @@ if __name__ == '__main__':
     r = redis.StrictRedis(host='localhost', port=1234, db=0)
 
     # DROP INDEX
+    print("Dropping indexes...")
+    start = time.process_time()
     try:
-        print("Dropping indexes...")
-        start = time.process_time()
         r.execute_command("FT.DROPINDEX journal_articles DD")
+        print("Dropped journal_articles")
         r.execute_command("FT.DROPINDEX conference_articles DD")
+        print("Dropped conference_articles")
         r.execute_command("FT.DROPINDEX proceedings DD")
+        print("Dropped proceedings")
+    except:
+        print("No more indexes to drop")
+    finally:
         end = time.process_time()
         print(f"Indexes dropped in {round(end-start, 2)}s")
-    except:
-        print("Indexes not found")
+
+    input("Press enter to continue...")
 
     # Create the index
-    article = "FT.CREATE journal_articles ON HASH PREFIX 1 article: SCHEMA key TEXT title TEXT WEIGHT 5.0 year NUMERIC journal TEXT number NUMERIC volume NUMERIC"
+    article = "FT.CREATE journal_articles ON HASH PREFIX 1 article: SCHEMA key TEXT title TEXT author TEXT WEIGHT 5.0 year NUMERIC journal TEXT number NUMERIC volume NUMERIC"
     inproceedings = "FT.CREATE conference_articles ON HASH PREFIX 1 inproceedings: SCHEMA key TEXT author TEXT title TEXT WEIGHT 5.0 year NUMERIC pages TEXT"
     proceedings = "FT.CREATE proceedings ON HASH PREFIX 1 proceedings: SCHEMA key TEXT editor TEXT title TEXT WEIGHT 5.0 publisher TEXT year NUMERIC volume NUMERIC"
 
     r.execute_command(article)
-    load_articles(r, "resources/article.json")
+    load_articles(r, "resources/journal_articles.json")
     r.execute_command(inproceedings)
-    load_inproceedings(r, "resources/inproceedings.json")
+    load_inproceedings(r, "resources/conference_articles.json")
     r.execute_command(proceedings)
-    load_proceedings(r, "resources/proceedings.json")
+    load_proceedings(r, "resources/conference_proceedings.json")
+
+
+# Example resolution for query E2
+# article_ids = r.sinter("journal:Theory of Computing Systems:articles", "author:Martin Gröhe:articles")
