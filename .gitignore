@@ -7,3 +7,4 @@ resources/dblp.xml
 .idea/
 com/.DS_Store
 redis_data/
+__pycache__/
