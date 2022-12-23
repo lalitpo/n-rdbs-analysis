@@ -3,6 +3,6 @@
 CREATE INDEX idx_booktitle_editor ON conference_proceedings (booktitle, editor); 
 SELECT editor, COUNT(*) AS num_editions 
 FROM conference_proceedings 
-WHERE booktitle='PODP' OR booktitle='ARMS-CC@PODC'
+WHERE booktitle='PODS'
 GROUP BY editor 
 ORDER BY num_editions DESC; 
