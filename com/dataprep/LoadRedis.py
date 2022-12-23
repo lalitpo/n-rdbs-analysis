@@ -6,7 +6,9 @@ r = redis.Redis(host='localhost', port=1234)
 
 redis_graph = Graph('dblp', r)
 
-LIMIT = 50000
+# Use this to limit the number of records to load, set to -1 to load all
+# I used this because the code fill my ram and crash my computer
+LIMIT = -1
 
 
 def update_progress(subject, progress, index, length):
