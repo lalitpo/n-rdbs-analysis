@@ -11,11 +11,14 @@ logger = logging.getLogger("Benchmarking")
 
 RUN_AMOUNT = 30
 
-def run_test(script_path):
+def run_test(conn, script_path):
+    with open(script_path, "r") as f:
+        script = f.read()
     start_time = time.process_time()
-    time.sleep(random.random() * 0.01)
+    conn.execute(script)
     end_time = time.process_time()
     return end_time - start_time
+
 
 def main():
     sql_scripts = sorted(glob.glob("com/queries/presto/*.sql"))
