@@ -1,5 +1,5 @@
 -- E1
-SELECT publisher FROM conference_proceedings WHERE booktitle = 'PODS';
+SELECT publisher FROM conference_proceedings WHERE booktitle='PODS' LIMIT 1;
 -- E2
 SELECT title FROM journal_articles WHERE author LIKE '%Martin Grohe%' AND journal = 'Theory Comput. Syst.' ORDER BY title ASC; 
 -- M1
@@ -32,7 +32,7 @@ LIMIT 1;
 -- M5
 SELECT editor, COUNT(*) AS num_editions 
 FROM conference_proceedings 
-WHERE booktitle='PODP' OR booktitle='ARMS-CC@PODC'
+WHERE booktitle='PODS'
 GROUP BY editor 
 ORDER BY num_editions DESC; 
 -- M6
