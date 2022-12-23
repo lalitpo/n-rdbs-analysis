@@ -1,6 +1,13 @@
 import redis
 import json
-import time
+from redisgraph import Node, Edge, Graph, Path
+
+r = redis.Redis(host='localhost', port=1234)
+
+redis_graph = Graph('dblp', r)
+
+LIMIT = 50000
+
 
 def update_progress(subject, progress, index, length):
     print(
@@ -14,133 +21,137 @@ def update_progress(subject, progress, index, length):
         end=''
     )
 
-
-def load_json(json_file: str):
-    with open(json_file) as f:
-        json_data = ",\n".join(f.readlines())
-        data = json.loads(f"[{json_data}]")
-        return data
+node_dict = {}
 
 
-def load_articles(r: redis.StrictRedis, json_file: str):
-    """
-    Load the journal articles into Redis. The articles are stored in a hash
-    and the journal and author are stored in a set, referencing the article
-
-    :param r: Redis connection
-    :param json_file: Path to the json file
-    """
-    data = load_json(json_file)
-    length = len(data)
-    start = time.process_time()
-    for i, article in enumerate(data):
-        update_progress("Loading journal articles", (i/length)*100, i, length)
-        r.execute_command(
-            f"HSET j_article:{i}",
-            "key", article["key"],
-            "author", article["author"],
-            "title", article["title"],
-            "year", article["year"],
-            "journal", article["journal"],
-            "number", article["number"],
-            "volume", article["volume"]
-        )
-        # Add the article to the journal
-        r.sadd(f"journal:{article['journal']}:articles", f"journal_articles:{i}")
-        # Add the article to the author
-        authors = article["author"].split(",")
-        for author in authors:
-            r.sadd(f"author:{author.strip()}:articles", f"journal_articles:{i}")
-        # Add the article to the year
-        r.sadd(f"year:{article['year']}:articles", f"journal_articles:{i}")
-
-    end = time.process_time()
-    print(f"\nTime: {round(end-start, 2)}s")
-
-
-def load_inproceedings(r: redis.StrictRedis, json_file: str):
-    data = load_json(json_file)
-    length = len(data)
-    start = time.process_time()
-    for i, inproceedings in enumerate(data):
-        update_progress("Loading conference articles", (i/length)*100, i, length)
-        r.execute_command(
-            f"HSET c_article:{i}",
-            "key", inproceedings["key"] if inproceedings["key"] is not None else "",
-            "author", inproceedings["author"] if inproceedings["author"] is not None else "",
-            "title", inproceedings["title"] if inproceedings["title"] is not None else "",
-            "booktitle", inproceedings["booktitle"] if inproceedings["booktitle"] is not None else "",
-            "year", inproceedings["year"] if inproceedings["year"] is not None else "",
-            "pages", inproceedings["pages"] if inproceedings["pages"] is not None else ""
-        )
-        # Add the article to the author
-        authors = inproceedings["author"].split(",")
-        for author in authors:
-            r.sadd(f"author:{author.strip()}:inproceedings", f"conference_articles:{i}")
-
-    end = time.process_time()
-    print(f"\nTime: {round(end-start, 2)}s")
-
-
-def load_proceedings(r: redis.StrictRedis, json_file: str):
-    data = load_json(json_file)
-    length = len(data)
-    start = time.process_time()
-    for i, proceedings in enumerate(data):
-        update_progress("Loading proceedings", (i/length)*100, i, length)
-        r.execute_command(
-            f"HSET proceedings:{i}",
-            "key", proceedings["key"] if proceedings["key"] is not None else "",
-            "editor", proceedings["editor"] if proceedings["editor"] is not None else "",
-            "title", proceedings["title"] if proceedings["title"] is not None else "",
-            "booktitle", proceedings["booktitle"] if proceedings["booktitle"] is not None else "",
-            "publisher", proceedings["publisher"] if proceedings["publisher"] is not None else "",
-            "year", proceedings["year"] if proceedings["year"] is not None else "",
-            "volume", proceedings["volume"] if proceedings["volume"] is not None else ""
-        )
-        # Add the proceedings to the editor
-        editors = proceedings["editor"].split(",")
-        for editor in editors:
-            r.sadd(f"editor:{editor}:proceedings", f"proceedings:{i}")
-        # Add the proceedings to the publisher
-        r.sadd(f"publisher:{proceedings['publisher']}:proceedings", f"proceedings:{i}")
- 
-    end = time.process_time()
-    print(f"\nTime: {round(end-start, 2)}s")
-
-
-if __name__ == '__main__':
-    # Connect to Redis
-    r = redis.StrictRedis(host='localhost', port=1234, db=0)
-
-    # DROP INDEX
-    print("Flushing & Dropping indexes...")
-    start = time.time()
+def get_or_create_node(redis_graph, label, key, value):
     try:
-        r.execute_command("FLUSHALL")
-        print("Flushed all")
-        r.execute_command("FT.DROPINDEX journal_articles")
-        print("Dropped journal_articles")
-        r.execute_command("FT.DROPINDEX conference_articles")
-        print("Dropped conference_articles")
-        r.execute_command("FT.DROPINDEX proceedings")
-        print("Dropped proceedings")
+        node = redis_graph.query(f"MATCH (y:{label} {key: '{value}'}) RETURN y")
     except:
-        print("No more indexes to drop")
-    finally:
-        end = time.time()
-        print(f"Indexes dropped in {round(end-start, 2)}s")
+        if label not in node_dict.keys():
+            node_dict[label] = {}
+        # Check if it exists in the dict
+        if value in node_dict[label].keys():
+            return node_dict[label][value]
+        else:
+            node = Node(label=label, properties={key: value})
+            redis_graph.add_node(node)
+            node_dict[label][value] = node
 
-    input("Press enter to continue...")
+    return node
 
-    # Create the index
-    article = "FT.CREATE journal_articles ON HASH PREFIX 1 j_article: SCHEMA key TEXT title TEXT author TEXT year NUMERIC journal TEXT number NUMERIC volume NUMERIC"
-    inproceedings = "FT.CREATE conference_articles ON HASH PREFIX 1 c_article: SCHEMA key TEXT author TEXT title TEXT booktitle TEXT year NUMERIC pages TEXT"
-    proceedings = "FT.CREATE proceedings ON HASH PREFIX 1 proceedings: SCHEMA key TEXT editor TEXT booktitle TEXT title TEXT publisher TEXT year NUMERIC volume NUMERIC"
+# Load conference articles
+with open("resources/conference_articles.json") as conference_articles:
+    for i, line in enumerate(conference_articles.readlines()[:LIMIT]):
+        length = LIMIT
+        conf_article = json.loads(line)
+        article = Node(
+            label='c_articles',
+            properties={
+                "key": conf_article["key"] if conf_article["key"] is not None else "",
+                "title": conf_article["title"] if conf_article["title"] is not None else "",
+                "booktitle": conf_article["booktitle"] if conf_article["booktitle"] is not None else "",
+                "pages": conf_article["pages"] if conf_article["pages"] is not None else "",
+            })
+        redis_graph.add_node(article)
 
-    r.execute_command(article)
-    load_articles(r, "resources/journal_articles.json")
-    r.execute_command(inproceedings)
-    load_inproceedings(r, "resources/conference_articles.json")
-    r.execute_command(proceedings)
-    load_proceedings(r, "resources/conference_proceedings.json")
+        if conf_article["year"] is not None:
+            year_node = get_or_create_node(redis_graph, 'year', 'year', conf_article["year"])
+            published_in = Edge(article, 'published_year', year_node)
+            redis_graph.add_edge(published_in)
+
+        if conf_article["booktitle"] is not None:
+            book_node = get_or_create_node(redis_graph, 'book', 'booktitle', conf_article["booktitle"])
+            published_in = Edge(article, 'published_in', book_node)
+            redis_graph.add_edge(published_in)
+
+        if conf_article["author"] is not None:
+            authors = conf_article["author"].split(",")
+            for author in authors:
+                author = author.strip()
+                author_node = get_or_create_node(redis_graph, 'author', 'name', author)
+                written_by = Edge(article, 'written_by', author_node)
+                redis_graph.add_edge(written_by)
+
+        update_progress("Loading conference articles", (i/length)*100, i, length)
+print()
+
+# Load journal articles
+with open("resources/journal_articles.json") as journal_articles:
+    for i, line in enumerate(journal_articles.readlines()[:LIMIT]):
+        length = LIMIT
+        journal_article = json.loads(line)
+        article = Node(
+            label='j_articles',
+            properties={
+                "key": journal_article["key"] if journal_article["key"] is not None else "",
+                "title": journal_article["title"] if journal_article["title"] is not None else "",
+                "number": journal_article["number"] if journal_article["number"] is not None else "",
+                "volume": journal_article["volume"] if journal_article["volume"] is not None else "",
+            })
+        redis_graph.add_node(article)
+
+        if journal_article["year"] is not None:
+            year_node = get_or_create_node(redis_graph, 'year', 'year', journal_article["year"])
+            published_in = Edge(article, 'published_year', year_node)
+            redis_graph.add_edge(published_in)
+
+        if journal_article["journal"] is not None:
+            journal_node = get_or_create_node(redis_graph, 'journal', 'journal', journal_article["journal"])
+            published_in = Edge(article, 'published_in', journal_node)
+            redis_graph.add_edge(published_in)
+
+        if journal_article["author"] is not None:
+            authors = journal_article["author"].split(",")
+            for author in authors:
+                author = author.strip()
+                author_node = get_or_create_node(redis_graph, 'author', 'name', author)
+                written_by = Edge(article, 'written_by', author_node)
+                redis_graph.add_edge(written_by)
+
+        update_progress("Loading journal articles", (i/length)*100, i, length)
+
+print()
+
+# Load conferences proceedings
+with open("resources/conference_proceedings.json") as conferences:
+    for i, line in enumerate(conferences.readlines()[:LIMIT]):
+        length = LIMIT
+        conference = json.loads(line)
+        conf = Node(
+            label='conferences',
+            properties={
+                "key": conference["key"] if conference["key"] is not None else "",
+                "title": conference["title"] if conference["title"] is not None else "",
+                "volume": conference["volume"] if conference["volume"] is not None else "",
+            })
+        redis_graph.add_node(conf)
+
+        if conference["year"] is not None:
+            year_node = get_or_create_node(redis_graph, 'year', 'year', conference["year"])
+            published_in = Edge(conf, 'published_year', year_node)
+            redis_graph.add_edge(published_in)
+
+        if conference["editor"] is not None:
+            editors = conference["editor"].split(",")
+            for editor in editors:
+                editor = editor.strip()
+                editor_node = get_or_create_node(redis_graph, 'editor', 'name', editor)
+                edited_by = Edge(conf, 'edited_by', editor_node)
+                redis_graph.add_edge(edited_by)
+
+        if conference["booktitle"] is not None:
+            book_node = get_or_create_node(redis_graph, 'book', 'booktitle', conference["booktitle"])
+            published_in = Edge(conf, 'published_in', book_node)
+            redis_graph.add_edge(published_in)
+
+        if conference["publisher"] is not None:
+            publisher_node = get_or_create_node(redis_graph, 'publisher', 'name', conference["publisher"])
+            published_by = Edge(conf, 'published_by', publisher_node)
+            redis_graph.add_edge(published_by)
+
+        update_progress("Loading conferences proceedings", (i/length)*100, i, length)
+
+print()
+
+redis_graph.commit()
