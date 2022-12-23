@@ -33,8 +33,17 @@ M5 = """
 GRAPH.QUERY dblp "MATCH (:book {booktitle:'PODS'})<-[:published_in]-(a:conferences)-[:edited_by]->(e:editor) WITH e, COUNT(a) AS count ORDER BY count DESC RETURN e.name, count LIMIT 1"
 """
 
-# M6:
+# M6: For the researcher(s) with the most overall (conference & journal) publications: to how many different conferences did they publish?
+M6 = """
+GRAPH.QUERY dblp "MATCH (a:author)-[:written_by]->(j:j_articles) WITH a, COUNT(j) AS count ORDER BY count DESC LIMIT 1 MATCH (a)-[:written_by]->(j:j_articles)-[:published_in]->(c:conferences) RETURN COUNT(DISTINCT c) LIMIT 1"
+"""
 
-# H1:
+# H1: For each researcher that published to the ICDT conference in 2020: Who was their most frequently occurring co-author (conference & journal)? How many times did they collaborate?
+H1 = """
+GRAPH.QUERY dblp "MATCH (:journal {journal: 'ICDT'})<-[:published_in]-(a:j_articles)-[:written_year]->(:author {year:2020}) WITH a MATCH (a)-[:written_by]->(b:author) WITH b, COUNT(a) AS count ORDER BY count DESC LIMIT 1 MATCH (b)-[:written_by]->(j:j_articles)-[:written_by]->(c:author) RETURN c.name, COUNT(j) LIMIT 1"
+"""
 
-# H2:
+# H2: Compute the Erdős number (Erdös in DBLP) of Dan Suciu.
+H2 = """
+GRAPH.QUERY dblp "MATCH (a:author {name:'Dan Suciu'})<-[:written_by]-(j:j_articles)-[:written_by]->(b:author) WITH b, COUNT(j) AS count ORDER BY count DESC LIMIT 1 MATCH (b)-[:written_by]->(j:j_articles)-[:written_by]->(c:author) RETURN c.name, COUNT(j) LIMIT 1"
+"""
