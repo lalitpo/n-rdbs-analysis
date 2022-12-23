@@ -1,7 +1,7 @@
 -- E1
-SELECT publisher, booktitle FROM conference_proceedings WHERE booktitle = 'PODS';
+SELECT publisher FROM conference_proceedings WHERE booktitle = 'PODS';
 -- E2
-SELECT title,author,journal FROM journal_articles WHERE author LIKE '%Martin Grohe%' AND journal = 'Theory Comput. Syst.' ORDER BY title ASC; 
+SELECT title FROM journal_articles WHERE author LIKE '%Martin Grohe%' AND journal = 'Theory Comput. Syst.' ORDER BY title ASC; 
 -- M1
 SELECT COUNT(*) FROM conference_articles WHERE booktitle = 'SIGMOD Conference' AND year = '2022'; 
 -- M2
