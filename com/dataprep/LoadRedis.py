@@ -2,12 +2,14 @@ import redis
 import json
 import time
 
-def update_progress(subject, progress):
+def update_progress(subject, progress, index, length):
     print(
-        "\r{0} [{1}] {2}%".format(
+        "\r{0} [{1}] {2}% {3}/{4}".format(
             subject,
-            ("#"*int(progress//2) + " "*int((102-progress)//2)),
-            str(int(progress)).rjust(3)
+            ("#"*int(progress//2) + "-"*int((100-progress)//2)),
+            str(int(progress)).zfill(3),
+            str(index).zfill(5),
+            str(length).zfill(5)
         ),
         end=''
     )
@@ -32,7 +34,7 @@ def load_articles(r: redis.StrictRedis, json_file: str):
     length = len(data)
     start = time.process_time()
     for i, article in enumerate(data):
-        update_progress("Loading journal articles", (i/length)*100)
+        update_progress("Loading journal articles", (i/length)*100, i, length)
         r.execute_command(
             f"HSET j_article:{i}",
             "key", article["key"],
@@ -61,12 +63,13 @@ def load_inproceedings(r: redis.StrictRedis, json_file: str):
     length = len(data)
     start = time.process_time()
     for i, inproceedings in enumerate(data):
-        update_progress("Loading conference articles", (i/length)*100)
+        update_progress("Loading conference articles", (i/length)*100, i, length)
         r.execute_command(
             f"HSET c_article:{i}",
             "key", inproceedings["key"] if inproceedings["key"] is not None else "",
             "author", inproceedings["author"] if inproceedings["author"] is not None else "",
             "title", inproceedings["title"] if inproceedings["title"] is not None else "",
+            "booktitle", inproceedings["booktitle"] if inproceedings["booktitle"] is not None else "",
             "year", inproceedings["year"] if inproceedings["year"] is not None else "",
             "pages", inproceedings["pages"] if inproceedings["pages"] is not None else ""
         )
@@ -84,7 +87,7 @@ def load_proceedings(r: redis.StrictRedis, json_file: str):
     length = len(data)
     start = time.process_time()
     for i, proceedings in enumerate(data):
-        update_progress("Loading proceedings", (i/length)*100)
+        update_progress("Loading proceedings", (i/length)*100, i, length)
         r.execute_command(
             f"HSET proceedings:{i}",
             "key", proceedings["key"] if proceedings["key"] is not None else "",
@@ -96,7 +99,9 @@ def load_proceedings(r: redis.StrictRedis, json_file: str):
             "volume", proceedings["volume"] if proceedings["volume"] is not None else ""
         )
         # Add the proceedings to the editor
-        r.sadd(f"editor:{proceedings['editor']}:proceedings", f"proceedings:{i}")
+        editors = proceedings["editor"].split(",")
+        for editor in editors:
+            r.sadd(f"editor:{editor}:proceedings", f"proceedings:{i}")
         # Add the proceedings to the publisher
         r.sadd(f"publisher:{proceedings['publisher']}:proceedings", f"proceedings:{i}")
  
@@ -130,7 +135,7 @@ if __name__ == '__main__':
 
     # Create the index
     article = "FT.CREATE journal_articles ON HASH PREFIX 1 j_article: SCHEMA key TEXT title TEXT author TEXT year NUMERIC journal TEXT number NUMERIC volume NUMERIC"
-    inproceedings = "FT.CREATE conference_articles ON HASH PREFIX 1 c_article: SCHEMA key TEXT author TEXT title TEXT year NUMERIC pages TEXT"
+    inproceedings = "FT.CREATE conference_articles ON HASH PREFIX 1 c_article: SCHEMA key TEXT author TEXT title TEXT booktitle TEXT year NUMERIC pages TEXT"
     proceedings = "FT.CREATE proceedings ON HASH PREFIX 1 proceedings: SCHEMA key TEXT editor TEXT booktitle TEXT title TEXT publisher TEXT year NUMERIC volume NUMERIC"
 
     r.execute_command(article)
@@ -139,7 +144,3 @@ if __name__ == '__main__':
     load_inproceedings(r, "resources/conference_articles.json")
     r.execute_command(proceedings)
     load_proceedings(r, "resources/conference_proceedings.json")
-
-
-# Example resolution for query E2
-# article_ids = r.sinter("journal:Theory of Computing Systems:articles", "author:Martin Gröhe:articles")
