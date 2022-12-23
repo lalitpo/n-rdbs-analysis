@@ -27,6 +27,14 @@ def run_presto_test(query, conn):
 def run_presto_benchmark():
     with open("com/queries/presto/allQueries.sql") as f:
         sql_scripts = f.read().split(";")
+        # Clean the script from the comments and empty lines, and put it in a single line
+        sql_scripts = [script.replace("\n", " ").replace("--", "").strip() for script in sql_scripts if script.strip() != ""]
+        # Clean the script from prefixed E, M, H, B by making the string start with "SELECT" or "WITH"
+        sql_scripts = [script[script.find("SELECT"):] if "SELECT" in script else script[script.find("WITH"):] for script in sql_scripts]
+        # Remove useles spaces
+        for index in range(len(sql_scripts)):
+            while "  " in sql_scripts[index]:
+                sql_scripts[index] = sql_scripts[index].replace("  ", " ")
 
     logger.info("running %d sql scripts", len(sql_scripts))
     query_timings = {}
@@ -93,7 +101,7 @@ def run_redis_benchmark():
     plt.show()
 
 def main():
-    # run_presto_benchmark()
+    run_presto_benchmark()
     run_redis_benchmark()
 
 if __name__ == "__main__":
